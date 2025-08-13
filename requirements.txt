@@ -1,0 +1,4 @@
+backtrader
+matplotlib
+seaborn
+pandas
