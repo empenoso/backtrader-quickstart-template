@@ -355,9 +355,19 @@ class LiquidityAnalyzer:
 
 # Поиск
 if __name__ == '__main__':
-    # Создаем анализатор с отладочным уровнем логирования
+    # 1. Определяем абсолютный путь к директории, где лежит наш скрипт
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # 2. Строим полный, надежный путь к папке с данными
+    #    os.path.join корректно соединит пути для любой ОС (Windows/Linux/Mac)
+    data_path = os.path.join(script_dir, "Data", "Tinkoff")
+
+    print(f"Путь к скрипту: {script_dir}")
+    print(f"Итоговый путь к данным: {data_path}")
+
+    # 3. Передаем этот надежный путь в наш анализатор
     analyzer = LiquidityAnalyzer(
-        data_folder="Data/Tinkoff/",
+        data_folder=data_path,
         years_back=20,
         top_n_stocks=40
     )
