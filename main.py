@@ -49,7 +49,7 @@ from utils.report_generator import generate_backtest_report, generate_optimizati
 # ======================================================================================
 
 # 1. ВЫБЕРИТЕ РЕЖИМ: 'BACKTEST' или 'OPTIMIZATION'
-MODE = 'OPTIMIZATION'
+MODE = 'BACKTEST'
 
 # 2. ВЫБЕРИТЕ СТРАТЕГИЮ из загруженных (см. вывод в консоли при запуске)
 #    Имя должно точно совпадать с именем класса стратегии.
@@ -85,10 +85,23 @@ if __name__ == '__main__':
     # --- 2. Инициализация Cerebro ---
     cerebro = bt.Cerebro(stdstats=False, optreturn=False if MODE == 'OPTIMIZATION' else True)
 
+    # --- Параметры, улучшающие графики ---
+    # Включаем стандартные наблюдатели (при желании можно оставить stdstats=False и добавить только нужные)
+    # Показываем Buy/Sell как маркеры над/под свечой (barplot=True) и дистанцию от свечи (bardist)
+    cerebro.addobserver(bt.observers.BuySell, barplot=True, bardist=0.015)
+
+    # Показываем значение портфеля / кэша — удобный верхний график
+    cerebro.addobserver(bt.observers.Value, plotname='Стоимость портфеля')    # портфель value (включая cash)
+    cerebro.addobserver(bt.observers.Cash, plotname='Свободные средства')     # cash отдельно
+    cerebro.addobserver(bt.observers.DrawDown, plotname='Просадка (%)')       # просадка
+    
+    # Показываем полную информацию по сделкам (PnL на закрытие и т.д.)
+    cerebro.addobserver(bt.observers.Trades, pnlcomm=True, plotname='P&L по сделкам')
+
     # --- 3. Конфигурация в зависимости от режима (Live vs Backtest) ---
     if LIVE_TRADING:
         print("РЕЖИM: РЕАЛЬНАЯ ТОРГОВЛЯ (TINKOFF)")
-        # Здесь логика для подключения к Tinkoff, взятая из вашего примера
+        # Здесь логика для подключения к Tinkoff, взятая из примера Игоря Чечета
         # store = TKStore(token=TINKOFF_TOKEN)
         # broker = store.getbroker()
         # cerebro.setbroker(broker)
@@ -177,5 +190,11 @@ if __name__ == '__main__':
                 reports_dir=REPORTS_DIR
             )
             
-            # Опционально: построить график
-            # cerebro.plot(style='candlestick', barup='green', bardown='red')
+            # Опционально: построить график            
+            cerebro.plot(
+                style='candlestick', 
+                barup='green', 
+                bardown='red',
+                vol=True            # включить объёмы                
+            )
+                
