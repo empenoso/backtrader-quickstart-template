@@ -13,16 +13,22 @@
 Результат: файл liquid_stocks_by_quarter.csv с топ акциями по кварталам
 """
 
-# 24.05.2025
+# 13.08.2025
 # Михаил Шардин, https://shardin.name/?utm_source=python
 
 import os
+import sys
 import pandas as pd
 import logging
 import glob
 from datetime import datetime, timedelta
 from collections import defaultdict
 from TinkoffPy import TinkoffPy
+
+# Настройка кодировки для корректного вывода русского текста
+if sys.platform == 'win32':
+    os.system('chcp 65001')  # UTF-8 для Windows консоли
+    sys.stdout.reconfigure(encoding='utf-8')
 
 class LiquidityAnalyzer:
     def __init__(self, data_folder="Data/Tinkoff/", years_back=5, top_n_stocks=40):
@@ -47,7 +53,7 @@ class LiquidityAnalyzer:
             level=logging.INFO,
             handlers=[
                 logging.FileHandler('liquidity_analysis.log', encoding='utf-8'),
-                logging.StreamHandler()
+                logging.StreamHandler(sys.stdout)
             ]
         )
         self.logger = logging.getLogger('LiquidityAnalyzer')
