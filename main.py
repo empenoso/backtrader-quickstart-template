@@ -25,16 +25,27 @@
 # Для запуска необходимо настроить параметры в секции "ГЛАВНАЯ ПАНЕЛЬ УПРАВЛЕНИЯ".
 #
 
+# --- Системные и стандартные библиотеки ---
 import os
-import datetime
-import backtrader as bt
 import sys
+import datetime
 
-# Настройка кодировки для корректного вывода русского текста
+# Это должно быть сделано ДО импорта backtrader или любого другого модуля,
+import matplotlib as mpl
+mpl.use('Agg')  # Говорим matplotlib, что мы будем только сохранять в файлы.
+import matplotlib.pyplot as plt
+# Принудительно устанавливаем backend для всех последующих импортов
+plt.switch_backend('Agg')
+from matplotlib.figure import Figure
+
+# Теперь импортируем "тяжелые" библиотеки, которые зависят от matplotlib 
+import backtrader as bt
+
+# --- Настройка кодировки ---
 sys.stdout.reconfigure(encoding='utf-8')
 
 # --- Импорты из нашего проекта ---
-import strategies  # Импортирует __init__.py, который загружает все стратегии
+import strategies
 from utils.custom_csv import CustomCSVData
 from utils.sortino_analyzer import SortinoRatio
 from utils.report_generator import generate_backtest_report, generate_optimization_report
@@ -82,13 +93,20 @@ if __name__ == '__main__':
     
     StrategyClass = strategies.available_strategies[STRATEGY_TO_RUN]
 
-    # --- 2. Инициализация Cerebro ---
-    cerebro = bt.Cerebro(stdstats=False, optreturn=False if MODE == 'OPTIMIZATION' else True)
+    # --- 2. Инициализация Cerebro для асинхронного режима ---
+    cerebro = bt.Cerebro(
+        stdstats=False, 
+        optreturn=False if MODE == 'OPTIMIZATION' else True,
+        runonce=False,  # КЛЮЧЕВОЙ ПАРАМЕТР: отключаем синхронизацию данных
+        preload=False,  # НЕ предзагружаем все данные в память
+        oldsync=False,   # НЕ используем старый механизм синхронизации
+        exactbars=-1    # ДОБАВИТЬ: позволяет разную длину данных
+    )
 
-    # --- Параметры, улучшающие графики ---
+    # --- Наблюдатели ---
     # Включаем стандартные наблюдатели (при желании можно оставить stdstats=False и добавить только нужные)
     # Показываем Buy/Sell как маркеры над/под свечой (barplot=True) и дистанцию от свечи (bardist)
-    cerebro.addobserver(bt.observers.BuySell, barplot=True, bardist=0.015)
+    # cerebro.addobserver(bt.observers.BuySell, barplot=True, bardist=0.015)
 
     # Показываем значение портфеля / кэша — удобный верхний график
     cerebro.addobserver(bt.observers.Value, plotname='Стоимость портфеля')    # портфель value (включая cash)
@@ -120,25 +138,34 @@ if __name__ == '__main__':
         print(f"РЕЖИМ: {MODE}")
         
         # --- 4. Загрузка данных ---
+
+        # НАСТРОЙКИ МАРКЕТА И ФОРМАТА ФАЙЛОВ
+        MARKET_PREFIX = "TQBR"
+        TIMEFRAME_SUFFIX = "_D1.txt"
+
         for ticker in StrategyClass.tickers:
-            datapath = os.path.join(DATA_DIR, ticker)
+            filename = f"{MARKET_PREFIX}.{ticker}{TIMEFRAME_SUFFIX}"
+            datapath = os.path.join(DATA_DIR, filename)
             if not os.path.exists(datapath):
                 print(f"Внимание: Файл данных не найден: {datapath}")
                 continue
-
+            
             data_feed = CustomCSVData(
                 dataname=datapath,
-                fromdate=FROM_DATE,
+                fromdate=FROM_DATE,  
                 todate=TO_DATE
             )
-            cerebro.adddata(data_feed, name=os.path.splitext(ticker)[0])
+            cerebro.adddata(data_feed, name=ticker)
+
+            # привязываем observer к этой конкретной серии, чтобы стрелки рисовались на её графике
+            cerebro.addobserver(bt.observers.BuySell, barplot=True, bardist=0.015, plotmaster=data_feed)
         
         # --- 5. Настройка брокера ---
         cerebro.broker.setcash(StrategyClass.start_cash)
         cerebro.broker.setcommission(commission=StrategyClass.commission)
         
-        # --- 6. Добавление сайзера (можно вынести в стратегию) ---
-        cerebro.addsizer(bt.sizers.PercentSizer, percents=95)
+        # --- 6. Добавление размера позиции (можно вынести в стратегию) ---
+        # cerebro.addsizer(bt.sizers.PercentSizer, percents=95)
         
         # --- 7. Добавление анализаторов ---
         cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name='trade_analyzer')
@@ -165,8 +192,7 @@ if __name__ == '__main__':
 
 
     # --- 9. Запуск процесса ---
-    results = cerebro.run()
-
+    results = cerebro.run() 
 
     # --- 10. Генерация отчетов ---
     if not LIVE_TRADING:
@@ -190,11 +216,48 @@ if __name__ == '__main__':
                 reports_dir=REPORTS_DIR
             )
             
-            # Опционально: построить график            
-            cerebro.plot(
-                style='candlestick', 
-                barup='green', 
-                bardown='red',
-                vol=True            # включить объёмы                
-            )
-                
+            # --- Сохранение графиков в файлы (индивидуально для каждого актива) ---
+            try:
+                # 1. Получаем список тикеров, которые были в бэктесте.
+                #    Это нужно для осмысленных имен файлов.
+                strategy_instance = results[0]
+                tickers_in_test = [d._name for d in strategy_instance.datas]
+                num_figs = max(1, len(tickers_in_test))
+
+                # 2. Вызываем plot() с параметром plotind=True.
+                #    Backtrader вернет список фигур, по одной на каждый актив.
+                figures = cerebro.plot(
+                    style='candlestick',
+                    barup='green',
+                    bardown='red',
+                    vol=True,
+                    plotind=True,
+                    # Можно также задать размер для каждой индивидуальной фигуры
+                    fig_w=16, # Ширина каждой фигуры в дюймах
+                    fig_h=9,   # Высота каждой фигуры в дюймах
+                    # numfigs=num_figs  # <- добавлено: по одной фигуре на тикер
+                )
+
+                # 3. Проходим по списку фигур и сохраняем каждую в свой файл.
+                timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
+                period_str = f"{FROM_DATE.strftime('%Y%m%d')}-{TO_DATE.strftime('%Y%m%d')}"
+
+                # figures - это список списков, [[fig1], [fig2], ...]. Проходим по нему.
+                for i, fig_group in enumerate(figures):
+                    if i >= len(tickers_in_test):
+                        # На случай, если фигур больше, чем тикеров (маловероятно)
+                        ticker_name = f"data_{i}"
+                    else:
+                        ticker_name = tickers_in_test[i]
+                    
+                    # Имя файла теперь включает тикер
+                    plot_filename = f"{STRATEGY_TO_RUN}_{ticker_name}_plot_{timestamp}_{period_str}.png"
+                    plot_filepath = os.path.join(REPORTS_DIR, plot_filename)
+                    
+                    # Сохраняем фигуру (первый и единственный элемент в fig_group)
+                    fig_group[0].savefig(plot_filepath, dpi=200) # dpi=200-300 для хорошего качества
+                    
+                    print(f"График для '{ticker_name}' сохранен в: {plot_filepath}")
+
+            except Exception as e:
+                print(f"Не удалось сохранить графики: {e}")

@@ -28,8 +28,6 @@
 import os
 import datetime
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 def generate_backtest_report(strategy_result, strategy_name, from_date, to_date, reports_dir):
     """Генерирует и сохраняет текстовый отчет по результатам бэктеста."""
@@ -156,6 +154,11 @@ def generate_backtest_report(strategy_result, strategy_name, from_date, to_date,
 
 def generate_optimization_report(results, strategy_name, opt_param_names, from_date, to_date, reports_dir):
     """Генерирует и сохраняет отчет по оптимизации и тепловую карту."""
+
+    # --- ДОБАВЛЯЕМ ИМПОРТЫ ЗДЕСЬ, ВНУТРИ ФУНКЦИИ ---
+    import matplotlib.pyplot as plt
+    import seaborn as sns 
+
     timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
     period_str = f"{from_date.strftime('%Y%m%d')}-{to_date.strftime('%Y%m%d')}"
     
@@ -208,6 +211,9 @@ def generate_optimization_report(results, strategy_name, opt_param_names, from_d
     
     try:
         heatmap_data = df.pivot(index=opt_param_names[0], columns=opt_param_names[1], values='profit_factor')
+
+        # Принудительно устанавливаем backend
+        plt.switch_backend('Agg')
         
         plt.figure(figsize=(12, 8))
         sns.heatmap(heatmap_data, annot=True, fmt=".2f", cmap="viridis")

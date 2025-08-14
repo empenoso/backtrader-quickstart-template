@@ -30,7 +30,6 @@ class CustomCSVData(bt.feeds.GenericCSVData):
     Разделитель: Табуляция (\t)
     """
     params = (
-        # --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
         ('separator', '\t'),  # Указываем, что разделитель - это табуляция
 
         ('dtformat', '%d.%m.%Y %H:%M'),
@@ -42,4 +41,6 @@ class CustomCSVData(bt.feeds.GenericCSVData):
         ('volume', 5),
         ('openinterest', -1), # -1 означает, что этого столбца нет
         ('time', -1), # Важно, если время уже включено в datetime
+        ('nullvalue', float('nan')),  # ДОБАВИТЬ ЭТУ СТРОКУ
+        ('reverse', False),  # ДОБАВИТЬ ЭТУ СТРОКУ
     )
