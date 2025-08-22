@@ -1,0 +1,22 @@
+--- РЕЗУЛЬТАТЫ ОПТИМИЗАЦИИ СТРАТЕГИИ: SmaCrossStrategy ---
+Бумаги в тесте: SBER, VTBR, GAZP, T, LKOH, NVTK, SMLT, GMKN, YDEX, PIKK, X5, VKCO, AFLT, ROSN, PLZL, UGLD, AFKS, MOEX, TATN, TRNFP, MTLR, MTSS, MGNT, SNGSP, POSI, NLMK, CHMF, IVAT, SBERP, MAGN, RUAL, RNFT, OZON, SVCB, RTKM, SNGS, UPRO, RAGR, PHOR, WUSH
+Параметры для оптимизации: fast_ma, slow_ma
+
+fast_ma    | slow_ma    | ProfitFactor    | TotalTrades 
+---------------------------------------------------------
+5          | 30         | 1.45            | 1476        
+5          | 40         | 1.59            | 1183        
+5          | 50         | 1.58            | 1022        
+5          | 60         | 1.64            | 900         
+10         | 30         | 1.32            | 1226        
+10         | 40         | 1.39            | 960         
+10         | 50         | 1.45            | 786         
+10         | 60         | 1.46            | 708         
+15         | 30         | 1.24            | 1162        
+15         | 40         | 1.47            | 862         
+15         | 50         | 1.40            | 691         
+15         | 60         | 1.52            | 602         
+20         | 30         | 1.37            | 1216        
+20         | 40         | 1.42            | 838         
+20         | 50         | 1.40            | 664         
+20         | 60         | 1.45            | 553         
