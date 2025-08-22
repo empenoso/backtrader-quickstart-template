@@ -18,8 +18,8 @@
 #   - Сохранение отчета и графика в папку 'reports'.
 #
 # Автор: Михаил Шардин https://shardin.name/
-# Дата создания: 10.08.2025
-# Версия: 1.0
+# Дата создания: 22.08.2025
+# Версия: 1.2
 # Новая версия всегда здесь: https://github.com/empenoso/backtrader-quickstart-template/
 #
 # Этот файл работает автоматически после завершения тестирования в main.py.
@@ -32,6 +32,7 @@ import pandas as pd
 def generate_backtest_report(strategy_result, strategy_name, from_date, to_date, reports_dir):
     """Генерирует и сохраняет текстовый отчет по результатам бэктеста."""
     p = getattr(strategy_result, 'params', None)
+    param_dict = {k: getattr(p, k) for k in p._getkeys()} if p else {}
     
     # Анализаторы (безопасно)
     try:
@@ -121,7 +122,8 @@ def generate_backtest_report(strategy_result, strategy_name, from_date, to_date,
 
     report_lines = [
         f"--- ОТЧЕТ ПО БЭКТЕСТУ СТРАТЕГИИ: {strategy_name} ---",
-        f"Параметры: {p}",
+        f"Бумаги в тесте: {[d._name for d in strategy_result.datas]}",
+        f"Параметры: {param_dict}",
         f"Период тестирования: с {from_date.strftime('%d.%m.%Y')} по {to_date.strftime('%d.%m.%Y')}",
         "--- РЕЗУЛЬТАТЫ ---",
         f"Итоговая прибыль/убыток: {fmt_money(pnl)} [{pnl_percent:.2f}%]" if pnl is not None else "Итоговая прибыль/убыток: N/A",
@@ -166,8 +168,13 @@ def generate_optimization_report(results, strategy_name, opt_param_names, from_d
     txt_filename = f"{strategy_name}_opt_{timestamp}_{period_str}.txt"
     txt_filepath = os.path.join(reports_dir, txt_filename)
 
+    # Берем первую стратегию из результатов для получения тикеров
+    first_strategy = results[0][0]
+    tickers = getattr(first_strategy.__class__, "tickers", [])
+
     with open(txt_filepath, 'w', encoding='utf-8') as f:
         f.write(f"--- РЕЗУЛЬТАТЫ ОПТИМИЗАЦИИ СТРАТЕГИИ: {strategy_name} ---\n")
+        f.write(f"Бумаги в тесте: {', '.join(tickers)}\n")
         f.write(f"Параметры для оптимизации: {', '.join(opt_param_names)}\n\n")
         
         # Заголовок таблицы
@@ -222,7 +229,10 @@ def generate_optimization_report(results, strategy_name, opt_param_names, from_d
         plt.ylabel(opt_param_names[0])
         
         # Получаем имена тикеров из класса стратегии
-        ticker_names = [os.path.splitext(ticker)[0] for ticker in strategy.__class__.tickers]
+        # Ограничиваем до 5 тикеров в имени файла
+        ticker_names = [os.path.splitext(ticker)[0] for ticker in tickers[:5]]
+        if len(tickers) > 5:
+            ticker_names.append("etc")  # добавим "etc", если тикеров больше
         tickers_str = "_".join(ticker_names)
         png_filename = f"{strategy_name}_opt_heatmap_{tickers_str}_{timestamp}_{period_str}.png"
         png_filepath = os.path.join(reports_dir, png_filename)
